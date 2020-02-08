@@ -3,44 +3,45 @@
 #include "fstream"
 #include "Config.h"
 #include "string.h"
-
+#include "thread"
 SERVICE_STATUS serviceStatus;
 SERVICE_STATUS_HANDLE serviceStatusHandle;
 LPWSTR serviceName = (LPWSTR)L"FileManagerAF";
 Config* configuration; // Конфигурация для работы службы
 using namespace std;
 int InitService() {
-	configuration = new Config();
-	//string line;
-	//ifstream file("C:\\ConfigsAF\\config.txt");
-	//if (!file.is_open()) { return 0; }
-
+	try {
+		configuration = new Config();
+		configuration->loadConfig();
+	}
+	catch (exception) {
+		return 0;
+	}
 	return 1;
 }
-void ShutDownService() {
-	serviceStatus.dwCurrentState = SERVICE_STOPPED;
-	serviceStatus.dwWin32ExitCode = -1;
-	SetServiceStatus(serviceStatusHandle, &serviceStatus);
-	return;
-}
+
 void ControlHandler(DWORD request) {
 	switch (request)
 	{
 	case SERVICE_CONTROL_STOP:
 
-		ShutDownService();
+		serviceStatus.dwCurrentState = SERVICE_STOPPED;
+		serviceStatus.dwWin32ExitCode = -1;
+		SetServiceStatus(serviceStatusHandle, &serviceStatus);
 		return;
 
 	case SERVICE_CONTROL_SHUTDOWN:
 
-		ShutDownService();
+		serviceStatus.dwCurrentState = SERVICE_STOPPED;
+		serviceStatus.dwWin32ExitCode = -1;
+		SetServiceStatus(serviceStatusHandle, &serviceStatus);
 		return;
 
 	default:
 		break;
 	}
 
-	SetServiceStatus(serviceStatusHandle, &serviceStatus);
+
 
 	return;
 }
@@ -59,22 +60,31 @@ void ServiceMain(int argc, char** argv) {
 	if (serviceStatusHandle == (SERVICE_STATUS_HANDLE)0) {
 		return;
 	}
-
-	error = InitService();
+	thread th = thread(InitService);
+	error = 1;
+		th.join();
+		th.~thread();
 	if (!error) {
-		ShutDownService();
+		serviceStatus.dwCurrentState = SERVICE_STOPPED;
+		serviceStatus.dwWin32ExitCode = -1;
+		SetServiceStatus(serviceStatusHandle, &serviceStatus);
+		return;
 		return;
 	}
 
 	serviceStatus.dwCurrentState = SERVICE_RUNNING;
 	SetServiceStatus(serviceStatusHandle, &serviceStatus);
 
+
 	while (serviceStatus.dwCurrentState == SERVICE_RUNNING)
 	{
 
-
 	}
 
+	// stop
+	serviceStatus.dwCurrentState = SERVICE_STOPPED;
+	serviceStatus.dwWin32ExitCode = -1;
+	SetServiceStatus(serviceStatusHandle, &serviceStatus);
 	return;
 }
 

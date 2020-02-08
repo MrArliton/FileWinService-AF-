@@ -153,11 +153,13 @@
   <ItemGroup>
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="Connector.cpp" />
+    <ClCompile Include="FileRWFA.cpp" />
     <ClCompile Include="WinServiceFile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Config.h" />
     <ClInclude Include="Connector.h" />
+    <ClInclude Include="FileRWFA.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
