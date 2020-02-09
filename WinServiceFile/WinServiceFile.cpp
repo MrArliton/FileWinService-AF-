@@ -1,24 +1,21 @@
-﻿
-#include "windows.h"
-#include "fstream"
-#include "Config.h"
-#include "string.h"
-#include "thread"
+﻿#include "headers.h"
+#include <iostream>
 SERVICE_STATUS serviceStatus;
 SERVICE_STATUS_HANDLE serviceStatusHandle;
 LPWSTR serviceName = (LPWSTR)L"FileManagerAF";
+
 Config* configuration; // Конфигурация для работы службы
+
+Connector* connector; // Подключеение
+FileRWFA* fileman; // Файловый менеджер
 using namespace std;
-int InitService() {
-	try {
+void InitService() { // Инициализируем класс конфига, подключения , менеджера файлов
 		configuration = new Config();
 		configuration->loadConfig();
-	}
-	catch (exception) {
-		return 0;
-	}
-	return 1;
+		fileman = new FileRWFA(configuration->getCatalog());
+	//	connector = new Connector(configuration->getIp(),configuration->getPort());
 }
+
 
 void ControlHandler(DWORD request) {
 	switch (request)
@@ -45,8 +42,10 @@ void ControlHandler(DWORD request) {
 
 	return;
 }
+void MainThread() { // Главный поток
+	
+}
 void ServiceMain(int argc, char** argv) {
-	int error;
 
 	serviceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
 	serviceStatus.dwCurrentState = SERVICE_START_PENDING;
@@ -61,27 +60,17 @@ void ServiceMain(int argc, char** argv) {
 		return;
 	}
 	thread th = thread(InitService);
-	error = 1;
 		th.join();
 		th.~thread();
-	if (!error) {
-		serviceStatus.dwCurrentState = SERVICE_STOPPED;
-		serviceStatus.dwWin32ExitCode = -1;
-		SetServiceStatus(serviceStatusHandle, &serviceStatus);
-		return;
-		return;
-	}
 
 	serviceStatus.dwCurrentState = SERVICE_RUNNING;
 	SetServiceStatus(serviceStatusHandle, &serviceStatus);
 
+	thread one = thread(MainThread);
+	one.join();
+	HANDLE han = one.native_handle();
+	WaitForSingleObject(han, INFINITY); // Если поток завершится значит програма прервана и службу можно вырубать
 
-	while (serviceStatus.dwCurrentState == SERVICE_RUNNING)
-	{
-
-	}
-
-	// stop
 	serviceStatus.dwCurrentState = SERVICE_STOPPED;
 	serviceStatus.dwWin32ExitCode = -1;
 	SetServiceStatus(serviceStatusHandle, &serviceStatus);
@@ -90,9 +79,12 @@ void ServiceMain(int argc, char** argv) {
 
 int main()
 {
-	SERVICE_TABLE_ENTRY ServiceTable[1];
+	/*SERVICE_TABLE_ENTRY ServiceTable[1];
 	ServiceTable[0].lpServiceName = serviceName;
 	ServiceTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTION)ServiceMain;
 
-	StartServiceCtrlDispatcher(ServiceTable);
+	StartServiceCtrlDispatcher(ServiceTable);*/
+
+	//debug
+
 }

@@ -22,7 +22,7 @@ Config::Config() { // Конструктор нам не потребуется
 	}
 	bool Config::setCfg(string line) { // Записываем конфиг
 		vector<string> elem = Split(line, '-');
-			if (elem.size() < 3 & elem.size() > 1) { // В 1 строке всегда записан только 1 настройка конфига
+			if ((elem.size() < 3) & (elem.size() > 1)) { // В 1 строке всегда записан только 1 настройка конфига
 				if (elem.at(0)._Equal("automat")) {
 					if (elem.at(1)._Equal("1")) {
 						automat = true;
