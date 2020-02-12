@@ -13,7 +13,6 @@ void InitService() { // Инициализируем класс конфига, 
 		configuration = new Config();
 		configuration->loadConfig();
 		fileman = new FileRWFA(configuration->getCatalog());
-	//	connector = new Connector(configuration->getIp(),configuration->getPort());
 }
 
 
@@ -43,7 +42,18 @@ void ControlHandler(DWORD request) {
 	return;
 }
 void MainThread() { // Главный поток
-	
+	// Создаём экзампляр подключения
+	connector = new Connector(configuration->getIp(), configuration->getPort());
+	while (true) {
+		Sleep(configuration->getTimeSyn()); // Спящий режим
+		if (connector->isConnect()) {
+			connector->synchronized();// Синхронизируем файлы
+		}
+		else {
+			connector->connection(); // Подключение
+		}
+	}
+
 }
 void ServiceMain(int argc, char** argv) {
 
@@ -70,10 +80,12 @@ void ServiceMain(int argc, char** argv) {
 	one.join();
 	HANDLE han = one.native_handle();
 	WaitForSingleObject(han, INFINITY); // Если поток завершится значит програма прервана и службу можно вырубать
-
 	serviceStatus.dwCurrentState = SERVICE_STOPPED;
 	serviceStatus.dwWin32ExitCode = -1;
 	SetServiceStatus(serviceStatusHandle, &serviceStatus);
+	delete(connector);
+	delete(fileman);
+	delete(configuration);
 	return;
 }
 
@@ -86,5 +98,4 @@ int main()
 	StartServiceCtrlDispatcher(ServiceTable);*/
 
 	//debug
-
 }
