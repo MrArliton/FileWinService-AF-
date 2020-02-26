@@ -98,4 +98,8 @@ int main()
 	StartServiceCtrlDispatcher(ServiceTable);*/
 
 	//debug
+	Connector connect("192.168.1.101",1000);
+	cout << connect.connection() << "\n";
+	cout << connect.connectFinish("123gds__");
+	cin.get();
 }
