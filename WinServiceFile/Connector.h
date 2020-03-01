@@ -21,7 +21,6 @@ private:
 	bool init = false;
 	int sendData(char_m& chars);
 	int recvData(char_m& buffer);
-	bool sendFile(std::fstream& file); // Отправляет файл при приёме сервером 
 	// Стадии подключения
 	int codingBytes(char* buffer);
 	int uncodingBytes(char* buffer);
@@ -31,7 +30,8 @@ private:
 	// Шифрование
 	//Пока отсутствует
 	/* Тут описаны команды которые может выполнить клиент изза сервера*/
-	bool getFile(std::fstream& file, int sizefile); // Принимает файл от сервера при подаче команды от сервера о приёме
+	int getFile(std::fstream& file, int sizefile); // Принимает файл от сервера при подаче команды от сервера о приёме
+	int sendFile(std::fstream& file); // Отправляет файл при приёме сервером 
 	//
 public:
 	Connector(const std::string& ip,int port);

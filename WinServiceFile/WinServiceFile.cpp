@@ -1,5 +1,6 @@
 ﻿#include "headers.h"
 #include <iostream>
+#include "queue"
 SERVICE_STATUS serviceStatus;
 SERVICE_STATUS_HANDLE serviceStatusHandle;
 LPWSTR serviceName = (LPWSTR)L"FileManagerAF";
@@ -8,11 +9,12 @@ Config* configuration; // Конфигурация для работы служ�
 
 Connector* connector; // Подключеение
 FileRWFA* fileman; // Файловый менеджер
+std::queue<std::vector<std::string>> qCommands; // Очередь команд , если команду нельзя выполнить перемещает в конец очереди
 using namespace std;
 void InitService() { // Инициализируем класс конфига, подключения , менеджера файлов
 		configuration = new Config();
 		configuration->loadConfig();
-		fileman = new FileRWFA(configuration->getCatalog());
+		fileman = new FileRWFA(configuration->getCatalog(),"FilesData.base");
 }
 
 
@@ -98,8 +100,10 @@ int main()
 	StartServiceCtrlDispatcher(ServiceTable);*/
 
 	//debug
-	Connector connect("192.168.1.101",1000);
-	cout << connect.connection() << "\n";
-	cout << connect.connectFinish("123gds__");
+	FileRWFA file("C:\\Users\\MrArl\\Desktop\\TEST","FilesData.base");
+	vector<wstring> a = file.getCF("*");
+//	
+	file.synchronizeCatalogs(qCommands);
+
 	cin.get();
 }

@@ -98,6 +98,7 @@ int Connector::copyBytes(char_m& buffer, const char* input) {
 }
 // Тут пилим  логер и действия при ошибке
 void Connector::errorC(int error) {
+	connected = false;
 	disconnect();
 }
 //Доделать шифрование
