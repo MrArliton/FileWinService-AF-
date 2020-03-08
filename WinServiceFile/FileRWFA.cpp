@@ -38,27 +38,92 @@ wstring FileRWFA::ConvertStringToWstring(const string& str)
 	}
 	return wstring();
 }
+base_s FileRWFA::readBase(fstream& file) {// Исполльзуется для чтения базы данных
+	base_s info;
+	string buff;
+	char charb;
+	file >> charb;
+	if (charb != '.') {
+		while (1) { // Считываем значение файла по номеру
+			if (isdigit(charb)) {
+				buff.push_back(charb);
+			}
+			else {
+				break;
+			}
+			file >> charb;
+		}
+		info.number = atoi(buff.c_str());
+		buff.clear();
+		if (charb == ':') {
+			file >> charb;
+			if (charb == 'c') {
+				info.catalog = 0;
+			}
+			else {
+				info.catalog = 1;
+			}
+			file >> charb;
+			if (charb == '\"') { // Считываем имя файла
+				file >> charb;
+				while (charb != '\"') {
+					buff.push_back(charb);
+					file >> charb;
+				}
+				info.name = buff;
+				buff.clear();
+			}
+			file >> charb;
+			if (charb != '=') {
+				info.number = -1;
+			}
+			if (info.catalog) {
+				file >> charb;
+				while (charb != '.') {
+					if (isdigit(charb)) // Проверяем  цифра ли  
+					{
+						buff.push_back(charb);
+					}
+					file >> charb;
+				}
+				info.bytes = atoi(buff.c_str()); // Преобразуем строку в число
+
+			}
+		}
+		else {
+			info.number = -1;
+		}
+	}
+	else {
+		info.number = -1;
+		info.catalog = 3;
+	}
+	return info;
+}
 void FileRWFA::compareFiles(const wstring& path, fstream& file) { // Цикличная функция 
 	vector<wstring> start = getCF(path + L"\\*"); // Тут берём основные катологи и работаем с ними
 	if (start.size() > 0) {
 		for (int i = 0; i < start.size(); i++) {
-			
+			bool type = typeFile(path+L"\\"+start.at(i));
 			file << i << ":";
+			if (!type) {
+				file << "c";
+			}
+			else {
+				file << "f";
+			}
 			file << "\"" << ConvertWStringToString(start.at(i)) << "\"=";
-			if (!typeFile(start.at(i))) { // Если каталог
-				compareFiles(path + start.at(i), file);
+			if (!type) { // Если каталог
+				compareFiles(path + L"\\" + start.at(i), file);
 				file << ".";
 			}
 			else { //Если файл
-				fstream bufferFile = openFile(start.at(i), false);
+				fstream bufferFile = openFile(path+L"\\"+start.at(i), false);
 				bufferFile.seekg(0, ios_base::end);
 				file << bufferFile.tellg() << ".";
 				closeFile(bufferFile);
 			}
 		}
-	}
-	else {
-		file << ".";
 	}
 }
 int FileRWFA::typeFile(const wstring& file) { // Узнаем файл это или каталог
@@ -72,6 +137,105 @@ int FileRWFA::typeFile(const wstring& file) { // Узнаем файл это или каталог
 		return 1;
 	}
 
+}	
+int FileRWFA::isEqualWStrMas(std::wstring str, std::vector<std::wstring> vector) {
+	for (int i = 0;i<vector.size(); i++) {
+		if (vector.at(i)._Equal(str)) {
+			return i;
+	}
+	}
+	return -1;
+}
+int FileRWFA::isEqualStrMas(std::string str, std::vector<std::wstring> vector) {
+	for (int i = 0; i < vector.size(); i++) {
+		if (vector.at(i)._Equal(ConvertStringToWstring(str))) { // Производим конвертацию строки в Юникод
+			return i;
+		}
+	}
+	return -1;
+}
+//
+int FileRWFA::addBaseFile(const string& path) {
+
+}
+//
+bool FileRWFA::execCommands(queue<vector<string>> qCommands) { // Выполняем изменения в базе данных
+	while (!qCommands.empty()) {
+		vector<string> str = qCommands.front();
+		qCommands.pop();
+		if (str.at(0) == "create") {
+			if (!addBaseFile(str.at(1))) {
+				return false;
+			}
+		}
+		else if (str.at(0) == "update") {
+			if (!updateBytesFile(str.at(1))) {
+				return false;
+			}
+		}
+		else if (str.at(0) == "delete") {
+			if (!deleteBaseFile(str.at(1))) {
+				return false;
+			}
+		}
+		else { // Если комманда не обнаружена
+
+		}
+
+	}
+	return true;
+}
+void FileRWFA::compareFC(const string& path, fstream& file, queue<vector<string>>& qCommands) { // Производим сравнения каталогов
+	vector<wstring> start = getCF(path + "\\*"); // Тут берём основные катологи и работаем с ними
+	base_s bs;
+	vector<int> baseF;
+	vector<string> arg;
+	// Начинаем сравнение
+	bs = readBase(file);
+	while (bs.catalog != 3) {
+		int id = isEqualStrMas(bs.name, start);
+		if (id > -1) {
+			baseF.push_back(id);
+			if (!bs.catalog) { // Каталог
+				compareFC(path+"\\"+bs.name, file, qCommands); // Подаём на сравнение каталога
+			}
+			else {
+				fstream fb = openFile(path+"\\"+bs.name, false);
+				fb.seekg(0, ios_base::end);
+				if (bs.bytes != fb.tellg()) { // Если количество байтов не равно
+					arg.push_back("update");
+					arg.push_back(path+"\\"+bs.name);
+					qCommands.push(arg);
+					arg.clear();
+				}
+				closeFile(fb);
+			}
+		}
+		else { // Если нет файла который есть в базе то значит он удалён
+			arg.push_back("delete");
+			arg.push_back(path+"\\"+bs.name);
+			qCommands.push(arg);
+			arg.clear();
+		}
+		bs = readBase(file);
+	}
+	for (int i = 0; i < start.size(); i++) {
+		bool b = true;
+		for (int o = 0; o < baseF.size(); o++) {
+			if (baseF.at(o) == i) {
+				b = false;
+			}
+		}
+		if (b) { // Если такого ид нету то этот файл создан
+				 //Подаём команду о создании новох файлов
+			// тут же делаем  изменения в базе данных
+			arg.push_back("create");
+			arg.push_back(path+"\\"+ConvertWStringToString(start.at(i)));
+			qCommands.push(arg);
+			arg.clear();
+		}
+	}
+
 }
 void FileRWFA::synchronizeCatalogs(queue<vector<string>>& qCommands) { // qCommands - это очередь команд которые выполняет клиент общаясь с сервером
 	fstream file = openFileT(baseName, false);
@@ -82,15 +246,71 @@ void FileRWFA::synchronizeCatalogs(queue<vector<string>>& qCommands) { // qComma
 			int len = file.tellg();
 			if (len > 1) { // База создана производим сравнение
 				// Если при сравннении база повреждена производим её пересоздание
+				file.seekg(0,ios_base::beg); // Перемещаем точку чтения
+				base_s bs;
+				vector<int> baseF;
+				vector<string> arg;
+				// Начинаем сравнение
+				bs = readBase(file);
+				while(bs.catalog!=3){
+					int id = isEqualStrMas(bs.name, start);
+					if (id > -1) {
+						baseF.push_back(id);
+						if (!bs.catalog) { // Каталог
+							compareFC(bs.name, file, qCommands); // Подаём на сравнение каталога
+						}
+						else {
+							fstream fb = openFile(bs.name, false);
+							fb.seekg(0, ios_base::end);
+							if (bs.bytes != fb.tellg()) { // Если количество байтов не равно
+								arg.push_back("update");
+								arg.push_back(bs.name);
+								qCommands.push(arg);
+								arg.clear();
+							}
+							closeFile(fb);
+						}
+					}
+					else { // Если нет файла который есть в базе то значит он удалён
+						arg.push_back("delete");
+						arg.push_back(bs.name);
+						qCommands.push(arg);
+						arg.clear();
+					}
+					bs = readBase(file);
+					}
+				// Тут производим обозначени о новых добавленных файлах по ид
+				for (int i = 0; i < start.size();i++) {
+					bool b = true;
+					for (int o = 0; o < baseF.size();o++) {
+						if (baseF.at(o) == i) {
+							b = false;
+						}
+					}
+					if (b) { // Если такого ид нету то этот файл создан
+						//Подаём команду о создании новох файлов
+						// тут же делаем  изменения в базе данных
+						arg.push_back("create");
+						arg.push_back(ConvertWStringToString(start.at(i)));
+						qCommands.push(arg);
+						arg.clear();
+					}
+				}
 
-
-			}
-			else { // База не создана или удалена начинаем создание новой базы
+				}
+			else { // База не создана или удалена ,начинаем создание новой базы
 				// А также сообщаем серверу о требуемой синхронизации
 				for (int i = 0; i < start.size(); i++) {
+					bool type = typeFile(start.at(i));
 					file << i << ":";
+					if (!type) {
+						file << "c";
+					}
+					else {
+						file << "f";
+					}
 					file << "\"" << ConvertWStringToString(start.at(i)) << "\"=";
-					if (!typeFile(start.at(i))) { // Если является каталогом
+					if (!type) { // Если является каталогом
 						compareFiles(start.at(i), file);
 						file << ".";
 					}
@@ -102,6 +322,7 @@ void FileRWFA::synchronizeCatalogs(queue<vector<string>>& qCommands) { // qComma
 					}
 
 				}
+				file << ".";
 			}
 		}
 		else {

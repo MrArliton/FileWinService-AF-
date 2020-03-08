@@ -45,11 +45,20 @@ void ControlHandler(DWORD request) {
 }
 void MainThread() { // Главный поток
 	// Создаём экзампляр подключения
-	connector = new Connector(configuration->getIp(), configuration->getPort());
+	connector = new Connector(configuration->getIp(), configuration->getPort(),configuration->getCatalog());
+	queue<vector<string>> qCommands;
 	while (true) {
 		Sleep(configuration->getTimeSyn()); // Спящий режим
 		if (connector->isConnect()) {
-			connector->synchronized();// Синхронизируем файлы
+			fileman->synchronizeCatalogs(qCommands);
+			if (fileman->execCommands(qCommands)) {
+				if (connector->execCommands(qCommands)) { 
+					connector->synchronized();// Синхронизируем файлы базы сервера с файлами
+				}
+				else { // Если проивзошла ошибка  при исполнении команды
+ 				
+				}
+			}
 		}
 		else {
 			connector->connection(); // Подключение
@@ -103,7 +112,13 @@ int main()
 	FileRWFA file("C:\\Users\\MrArl\\Desktop\\TEST","FilesData.base");
 	vector<wstring> a = file.getCF("*");
 //	
+	cout << qCommands.size();
 	file.synchronizeCatalogs(qCommands);
-
+	cout << qCommands.size();
+	while (!qCommands.empty()) {
+		cout << qCommands.front().at(0) << "\n";
+		cout << qCommands.front().at(1) << "-\n";
+		qCommands.pop();
+	}
 	cin.get();
 }

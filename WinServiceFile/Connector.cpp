@@ -1,9 +1,11 @@
 #include "Connector.h"
 //debuf include
 #include <iostream>
+#include <fstream>
 using namespace std;
-Connector::Connector(const string& ip, int port) { // Присваивает значения
+Connector::Connector(const string& ip, int port,string& catalog) { // Присваивает значения
 	// Стартуем сокеты
+	this->catalog = catalog;
 	if (FAILED(WSAStartup(MAKEWORD(2, 2), &ws))) // Если инициализация провалена
 	{
 		return;
@@ -16,6 +18,12 @@ Connector::Connector(const string& ip, int port) { // Присваивает значения
 	addr.sin_family = AF_INET;
 	init = true;
 	
+}
+int Connector::getFile(fstream& file,int size_file,const string& path) {
+
+}
+int Connector::sendFile(fstream& file,const string& path) {
+
 }
 int Connector::connection() { // Тут только создаём подключение с стандартными проверками
 	if (SOCKET_ERROR == (connect(sock,(sockaddr*)&addr,sizeof(addr)))) { 
@@ -101,7 +109,34 @@ void Connector::errorC(int error) {
 	connected = false;
 	disconnect();
 }
+int Connector::deleteFileServer(const string& path) { // Посылаем  серверу команду  от удалении файла
+
+}
+int Connector::updateFile(const string& path) { // Посылаем команду на обновление
+
+}
 //Доделать шифрование
+bool Connector::execCommands(queue<vector<string>> qCommands) { // Исполняем команды
+	while (!qCommands.empty()) {
+		vector<string> str = qCommands.front();
+		qCommands.pop();
+		if (str.at(0)=="create") {
+			fstream file = fstream(catalog+"\\"+str.at(1), ios_base::in | ios_base::out | ios_base::binary | ios_base::ate);
+			sendFile(file,str.at(1)); // Отправляет файл серверу
+		}
+		else if (str.at(0) == "update") { 
+			updateFile(str.at(1)); // Отправляем серверу запрос на обновление
+		}
+		else if (str.at(0) == "delete") {
+			deleteFileServer(str.at(1)); // Отправляем запрос на удаление файлов
+		}
+		else { // Если комманда не обнаружена
+			
+		}
+	
+	}
+	return true;
+}
 int Connector::codingBytes(char* bytes) {
 	return 0;
 }

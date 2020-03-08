@@ -1,6 +1,8 @@
 #pragma once
 #include "string"
 #include "WinSock.h"
+#include <vector>
+#include <queue>
 #pragma comment (lib,"Ws2_32.lib")
 class Connector
 {
@@ -11,6 +13,7 @@ typedef	struct charM {
 private:
 	//Const
 	const size_t buffer_pass = 32;
+	std::string catalog;
 	//
 	void readThread(); // Для потока с чтением 
 	bool readingTh = false; // Нужно ли потоку читать с сервера
@@ -21,6 +24,8 @@ private:
 	bool init = false;
 	int sendData(char_m& chars);
 	int recvData(char_m& buffer);
+	int deleteFileServer(const std::string& path); // Посылааем коммандуц удаления сервера 
+	int updateFile(const std::string& path);
 	// Стадии подключения
 	int codingBytes(char* buffer);
 	int uncodingBytes(char* buffer);
@@ -30,11 +35,12 @@ private:
 	// Шифрование
 	//Пока отсутствует
 	/* Тут описаны команды которые может выполнить клиент изза сервера*/
-	int getFile(std::fstream& file, int sizefile); // Принимает файл от сервера при подаче команды от сервера о приёме
-	int sendFile(std::fstream& file); // Отправляет файл при приёме сервером 
+	int getFile(std::fstream& file, int sizefile,const std::string& path); // Принимает файл от сервера при подаче команды от сервера о приёме
+	int sendFile(std::fstream& file,const std::string& path); // Отправляет файл при приёме сервером 
 	//
 public:
-	Connector(const std::string& ip,int port);
+	Connector(const std::string& ip,int port,std::string& catalog);
+	bool execCommands(std::queue<std::vector<std::string>> qCommand); // Исполняем команду
 	int synchronized(); // Синхронизирует и копирует и отправляет файлы 
 	/*
 	Тут описаны возможные команды
