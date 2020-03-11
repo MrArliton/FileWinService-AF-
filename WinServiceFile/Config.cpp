@@ -10,7 +10,7 @@ Config::Config() { // Конструктор нам не потребуется
 
 		vector<string> otvet;
 		string buffer;
-		while ((next = line.find('-', prev)) != string::npos) {
+		while ((next = line.find(del, prev)) != string::npos) {
 			buffer = line.substr(prev, next - prev);
 			otvet.push_back(buffer);
 			prev = next + 1;

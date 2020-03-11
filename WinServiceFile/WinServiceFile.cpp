@@ -109,16 +109,23 @@ int main()
 	StartServiceCtrlDispatcher(ServiceTable);*/
 
 	//debug
-	FileRWFA file("C:\\Users\\MrArl\\Desktop\\TEST","FilesData.base");
-	vector<wstring> a = file.getCF("*");
-//	
-	cout << qCommands.size();
-	file.synchronizeCatalogs(qCommands);
-	cout << qCommands.size();
-	while (!qCommands.empty()) {
-		cout << qCommands.front().at(0) << "\n";
-		cout << qCommands.front().at(1) << "-\n";
-		qCommands.pop();
-	}
+	//FileRWFA file("C:\\Users\\MrArl\\Desktop\\TEST","FilesData.base");
+
+	//cout << qCommands.size();
+	//file.synchronizeCatalogs(qCommands);
+	//cout << qCommands.size();
+	//while (!qCommands.empty()) {
+	//	cout << qCommands.front().at(0) << "\n";
+	//	cout << qCommands.front().at(1) << "-\n";
+	//	qCommands.pop();
+	//}
+	//////
+	configuration = new Config();
+	configuration->loadConfig();
+	connector = new Connector(configuration->getIp(), 1000, configuration->getCatalog());
+	cout <<connector->connection()<<"\n";
+	cout << connector->connectFinish("123gds__") << "\n";
+	fstream fs = fstream("C:\\Users\\MrArl\\Desktop\\TEST\\Dionnisiy123.pptx" ,ios_base::in | ios_base::out | ios_base::binary | ios_base::ate);
+	cout << connector->sendFile(fs, "Dionnisiy123.pptx") << "-";
 	cin.get();
 }

@@ -154,9 +154,159 @@ int FileRWFA::isEqualStrMas(std::string str, std::vector<std::wstring> vector) {
 	}
 	return -1;
 }
-//
-int FileRWFA::addBaseFile(const string& path) {
+vector<string> FileRWFA::Split(const string& line, char del) { // Делим строку 
+	int i = line.find(del, 0);
+	int next = 0;
+	int prev = 0;
 
+	vector<string> otvet;
+	string buffer;
+	while ((next = line.find(del, prev)) != string::npos) {
+		buffer = line.substr(prev, next - prev);
+		otvet.push_back(buffer);
+		prev = next + 1;
+
+	}
+	buffer = line.substr(prev, next - prev);
+	otvet.push_back(buffer);
+	return otvet;
+}
+// Работы с базой данных
+int FileRWFA::addBaseFile(const string& path) { // Добавление файла в локальную базу
+	fstream file = openFileT(baseName, false);
+	file.seekg(0);
+	string sw1;
+	string sw2;
+	vector<string> sp = Split(path,'\\');
+	base_s bs;
+	if (sp.size() > 1) { // Если находится в главном катологе
+		for (int i = 0; i < sp.size() - 1;i++) { // Переносит указатель на начало каталога
+			while (1) {
+				bs = readBase(file);
+				if (!bs.catalog) {
+					if (bs.name == sp.at(i)) {
+							break;
+					}
+				}
+			}
+		}
+		int last = file.tellg();
+		file.seekg(0);
+		for (int i = 0; i < last;i++) {
+			sw1 += file.get();
+		}
+		//
+		file.seekg(0, ios_base::end);
+		int last2 = file.tellg();
+		file.seekg(last);
+		for (int i = last; i < last2;i++) {
+			sw2 += file.get();
+		}
+		closeFile(file);
+		file = openFileT(baseName,true);
+		file << sw1;
+		int type = typeFile(ConvertStringToWstring(sp.at(sp.size() - 1)));
+		if (!type) {
+			file << "0:c\"" + sp.at(sp.size() - 1) << "\"="; // Добавляем файл
+			file << ".";
+		}
+		else {
+			file << "0:f\"" + sp.at(sp.size() - 1) << "\"="; // Добавляем файл
+			fstream fb = openFile(path, false);
+			fb.seekg(0, ios_base::end);
+			file << fb.tellg() << ".";
+			closeFile(fb);
+		}
+		file << sw2;
+		closeFile(file);
+
+	}
+	else { 
+		file.seekg(0, ios_base::end);
+		int last = file.tellg();
+		file.seekg(0);
+		for (int i = 0; i < last; i++) {
+			sw2 += (char)file.get();
+		}
+		closeFile(file);
+		file = openFileT(baseName, true);
+		int type = typeFile(ConvertStringToWstring(sp.at(sp.size() - 1)));
+		if (!type) {
+			file << "0:c\"" + sp.at(sp.size() - 1) << "\"="; // Добавляем файл
+			file << ".";
+		}
+		else {
+			file << "0:f\"" + sp.at(sp.size() - 1) << "\"="; // Добавляем файл
+			fstream fb = openFile(path, false);
+			fb.seekg(0, ios_base::end);
+			file << fb.tellg() << ".";
+			closeFile(fb);
+		}
+		file << sw2;
+		closeFile(file);
+	}
+	return 1;
+}
+int FileRWFA::deleteBaseFile(const string& path) {
+	fstream file = openFileT(baseName, false);
+	file.seekg(0);
+	string sw1;
+	string sw2;
+	vector<string> sp = Split(path, '\\');
+	base_s bs;
+	int last;
+	int last2;
+	for (int i = 0; i < sp.size();i++) { // Находим  указатель на нужный элемент
+		while (1) {
+			last = file.tellg();// Записываем последнее значени указателя
+			bs = readBase(file);
+			if (bs.name == sp.at(i)) {
+				if (!bs.catalog&&i==(sp.size()-1)) {
+					while (1) {
+						bs = readBase(file);
+						if (bs.catalog == 3) {
+							break;
+						}
+					}
+				}
+				break;
+			}
+			else {
+				if (!bs.catalog) {
+					while (1) {
+						bs = readBase(file);
+						if (bs.catalog == 3) {
+							break;
+						}
+					}
+				}
+			} 
+		}
+	} 
+	// После нахожэдения файла
+	last2 = file.tellg();
+	file.seekg(0);
+	for (int i = 0; i < last; i++) {
+		sw1 += (char)file.get();
+	}
+	file.seekg(0, ios_base::end);
+	int end = file.tellg();
+	file.seekg(last2);
+	for (int i = last2; i < end;i++) {
+		sw2 += (char)file.get();
+	}
+	closeFile(file); // Пересоздаём файл
+	file = openFileT(baseName, true);
+	file << sw1;
+	file << sw2;
+	closeFile(file);
+
+	return 1;
+}
+int FileRWFA::updateBytesFile(const string& path) {
+	deleteBaseFile(path);
+	addBaseFile(path);
+	return 1;
 }
 //
 bool FileRWFA::execCommands(queue<vector<string>> qCommands) { // Выполняем изменения в базе данных

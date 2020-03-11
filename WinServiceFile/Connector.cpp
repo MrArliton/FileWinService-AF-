@@ -1,9 +1,13 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "Connector.h"
+#include "cmath"
 //debuf include
+
 #include <iostream>
 #include <fstream>
 using namespace std;
-Connector::Connector(const string& ip, int port,string& catalog) { // Присваивает значения
+
+Connector::Connector(const string ip, int port,string catalog) { // Присваивает значения
 	// Стартуем сокеты
 	this->catalog = catalog;
 	if (FAILED(WSAStartup(MAKEWORD(2, 2), &ws))) // Если инициализация провалена
@@ -19,12 +23,106 @@ Connector::Connector(const string& ip, int port,string& catalog) { // Присваивае
 	init = true;
 	
 }
+//
 int Connector::getFile(fstream& file,int size_file,const string& path) {
-
+	return 1;
 }
-int Connector::sendFile(fstream& file,const string& path) {
-
+int Connector::sendFile(fstream& file, const string& path) { // Файл должен быть открыт в бинарном виде
+	recvMasg = false;
+	// начало
+	sendData("FCIF", true); // Отправляем команду о начале передеачи данных
+	sendData(path.c_str(), true); // Отправляем путь до файла
+	string buffer;
+	char_m bs;
+	bs.chars = new char[32];
+	bs.length = 32;
+	if (file.is_open()) {
+		file.seekg(0, ios_base::end);
+		int length = file.tellg();
+		buffer = std::to_string(length);
+		sendData(buffer.c_str(), true); // Отправляем данные
+		// Принимаем от сервера ответ на данные
+		recvData(bs);
+		uncodingBytes(bs);
+		buffer = "okey";
+		if (buffer._Equal(bs.chars)) { // Сравниваем
+			// Тут начинаем передачу файла
+			char_m rs;
+			if (length < 4096) { //
+				rs.chars = new char[length];
+				rs.length = length;
+				file.read(rs.chars,length);
+				// Тут делаем  единоразовую отправку
+				codingBytes(rs); // Кодируем  байты
+				sendData(rs);
+				recvData(bs);
+				uncodingBytes(bs);
+				if (buffer._Equal(bs.chars)) { //Если всё верно
+					sendData("SucClose", true); // Завершена передача
+				}
+				else { // Сервер выслал неверный ответ
+					errorC(3); // Проблема покдлючения
+				}
+			}
+			else {
+				rs.chars = new char[4096];
+				rs.length = 4096;
+				file.seekg(0, ios_base::beg);
+				cout << "len-" << length << "\n";
+				for (int i = 0; i < ceil(length/4096.0);i++) {
+					if (i != ceil(length / 4096.0) - 1) {
+						file.read(rs.chars, 4096);
+					}
+					else {
+						rs.length = length - file.tellg();
+						file.read(rs.chars,length-(int)file.tellg());
+					}
+					cout << i << "--" << file.tellg() << "()\n";
+					codingBytes(rs);
+					sendData(rs);
+					recvData(bs);
+					uncodingBytes(bs);
+					if (!buffer._Equal(bs.chars)) { // Проверяем ответ от сервера
+						delete[]bs.chars;
+						delete[]rs.chars;
+						errorC(3); // проблемыа соединения с сервером
+						return 3;
+					}
+					if (file.eof()) {// Если равное концу файла
+						cout << "eof\n";
+						cout << rs.chars << "\n";
+						break;
+					}
+				}
+				sendData("SucClose", true); // Завершена передача
+			}
+			cout << "end\n";
+			delete[]bs.chars;
+			delete[]rs.chars;
+			return 0;
+		}
+		else {
+			delete[]bs.chars;
+			recvMasg = true;
+			return 3;
+		}
+	}
+	else {
+		sendData("stop",true); // Посылаем сообщение об остановке передачи
+		errorC(6); // Ошибка открытия файла
+	}
+	delete[]bs.chars;
+	recvMasg = true;
+	return 0;
 }
+
+int Connector::deleteFileServer(const string& path) { // Посылаем  серверу команду  от удалении файла
+	return 1;
+}
+int Connector::updateFile(const string& path) { // Посылаем команду на обновление
+	return 1;
+}
+//
 int Connector::connection() { // Тут только создаём подключение с стандартными проверками
 	if (SOCKET_ERROR == (connect(sock,(sockaddr*)&addr,sizeof(addr)))) { 
 		return WSAGetLastError(); // Возвращаем ошибку
@@ -109,12 +207,7 @@ void Connector::errorC(int error) {
 	connected = false;
 	disconnect();
 }
-int Connector::deleteFileServer(const string& path) { // Посылаем  серверу команду  от удалении файла
 
-}
-int Connector::updateFile(const string& path) { // Посылаем команду на обновление
-
-}
 //Доделать шифрование
 bool Connector::execCommands(queue<vector<string>> qCommands) { // Исполняем команды
 	while (!qCommands.empty()) {
@@ -137,10 +230,13 @@ bool Connector::execCommands(queue<vector<string>> qCommands) { // Исполняем ком
 	}
 	return true;
 }
-int Connector::codingBytes(char* bytes) {
+int Connector::codingBytes(char_m bytes) {
 	return 0;
 }
-int Connector::uncodingBytes(char* bytes) {
+char* Connector::codingBytes(const char* bytes) {
+	return	_strdup(bytes);
+}
+int Connector::uncodingBytes(char_m bytes) {
 	return 0;
 }
 int Connector::sendData(char_m& buffer) { // Данные для предачи
@@ -149,7 +245,23 @@ int Connector::sendData(char_m& buffer) { // Данные для предачи
 	}
 	return 0;
 }
-
+int Connector::sendData(const char* str, bool coding) { // Отправка константных сообщений
+	if (coding) {
+		char* buffer = codingBytes(str);
+		if (SOCKET_ERROR == (send(sock, buffer, strlen(buffer), NULL))) {
+			free(buffer);
+			return WSAGetLastError();
+		}
+		free(buffer);
+		return 0;
+	}
+	else {
+		if (SOCKET_ERROR == (send(sock, str, strlen(str), NULL))) {
+			return WSAGetLastError();
+		}
+		return 0;
+	}
+}
 int Connector::recvData(char_m& buffer) { // Приём данных
 	int actual_len = 0;
 		if (SOCKET_ERROR == (actual_len = recv(sock, buffer.chars, buffer.length, 0))) {

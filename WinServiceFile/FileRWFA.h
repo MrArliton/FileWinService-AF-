@@ -18,9 +18,11 @@ private:
 	std::string baseName;
 	std::wstring ConvertStringToWstring(const std::string& str);
 	int lastInfoCF;
+	std::vector<std::string> Split(const std::string& line, char del);
 	//
 	void compareFiles(const std::wstring& path,std::fstream& file); // Тут указываем путь до каталога 
 	void compareFC(const std::string& path,std::fstream& file, std::queue<std::vector<std::string>>& qCommands); // Тут производим дальнейшее сравнение
+	base_s readBase(std::fstream& read); // Чтение базы данных
 	//
 	void errorFA(const char* error);
 	int typeFile(const std::wstring& name);
@@ -54,6 +56,6 @@ public:
 	bool deleteFile(const std::string& path); // Удаление файла
 
 	// private (debug)
-	base_s readBase(std::fstream& read); // Чтение базы данных
+	
 };
 
